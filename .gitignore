@@ -1,0 +1,6 @@
+data/raw/LIDC-IDRI
+data/processed
+test_prepare/
+train_prepare/
+venv/
+outputs/predictions

@@ -1,0 +1,8 @@
+[dicom]
+# SỬA DÒNG DƯỚI ĐÂY THÀNH ĐƯỜNG DẪN TRÊN MÁY
+path = C:\Users\addmin\projects\LIDC_Lung_Tumor_NeuralODE\data\raw\LIDC-IDRI
+warn = True
+
+[pylidc]
+confidence_level = 0.5
+padding_size = 1

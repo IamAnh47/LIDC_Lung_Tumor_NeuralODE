@@ -1,0 +1,28 @@
+project:
+  name: "LIDC_NeuralODE_Reconstruction"
+  version: "1.0.0"
+
+paths:
+  raw_data: "data/raw/LIDC-IDRI"
+  processed_data: "data/processed"
+  output_dir: "outputs"
+  experiment_dir: "experiments"
+
+data:
+  target_spacing: [1.0, 1.0, 1.0]
+  roi_size: [64, 64, 32]
+  sdf_samples: 10000
+  split_ratios: [0.7, 0.1, 0.2]
+
+model:
+  encoder_name: "nnunet"
+  latent_dim: 256
+  hidden_dim: 512
+  ode:
+    method: "dopri5"
+
+train:
+  batch_size: 8
+  learning_rate: 2.0e-5
+  num_epochs: 100
+  save_every: 5

@@ -1,0 +1,31 @@
+# Chỉ định kho chứa PyTorch GPU (CUDA 12.1)
+--extra-index-url https://download.pytorch.org/whl/test/cu124
+
+# Các thư viện tính toán cơ bản
+numpy>=1.24.0
+matplotlib
+scipy
+tqdm
+pyyaml
+
+# Xử lý ảnh y tế & 3D
+pylidc
+pydicom
+scikit-image
+trimesh
+Rtree
+
+# Deep Learning Core
+torch
+#torchvision
+#torchaudio
+
+# Neural ODE & Medical DL
+torchdiffeq
+monai
+
+# Công cụ theo dõi
+tensorboard
+jupyter
+
+pandas
