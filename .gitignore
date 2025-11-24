@@ -6,3 +6,5 @@ venv/
 outputs/predictions
 experiments/exp_01_nnunet/
 experiments/exp_02_resnet/
+*.pth
+*.pt
