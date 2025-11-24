@@ -223,6 +223,4 @@ Mở phần mềm Blender.
 
 Import file Wavefront (.obj).
 
-(Tùy chọn) Kiểm tra file info.txt trong thư mục output để biết tỷ lệ Scale trục Z chính xác nếu cần render chuyên sâu.
-
 Tác giả: Tuấn Anh, HCMUT
