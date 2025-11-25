@@ -144,47 +144,47 @@ Dự án sử dụng cơ chế "God Mode Loader" để tự động tìm đườ
 
 ## Bước 1: Tiền xử lý dữ liệu (Preprocessing)
 1. Nạp dữ liệu & Gộp nhãn (Consensus)
-Vấn đề: Trong bộ dữ liệu LIDC-IDRI, mỗi nodule được đánh dấu bởi tối đa 4 bác sĩ chẩn đoán hình ảnh. Mỗi người vẽ một đường viền khác nhau.
-Chúng ta cần tạo ra một Ground Truth để máy học.
-Kỹ thuật: Majority Voting - bỏ phiếu đa số - 50%.
-Cách thực hiện:Chồng 4 mask của 4 bác sĩ lên nhau. Một voxel chỉ được coi là "Khối u" nếu có ít nhất 2 trên 4 bác sĩ đồng ý.Nếu chỉ có 1 người khoanh vùng đó -> Coi là nhiễu, bỏ qua.
-=> Cách này giúp loại bỏ các sai sót cá nhân của từng bác sĩ và tạo ra một mask có độ tin cậy cao nhất.
+- Vấn đề: Trong bộ dữ liệu LIDC-IDRI, mỗi nodule được đánh dấu bởi tối đa 4 bác sĩ chẩn đoán hình ảnh. Mỗi người vẽ một đường viền khác nhau.
+- Chúng ta cần tạo ra một Ground Truth để máy học.
+- Kỹ thuật: Majority Voting - bỏ phiếu đa số - 50%.
+- Cách thực hiện:Chồng 4 mask của 4 bác sĩ lên nhau. Một voxel chỉ được coi là "Khối u" nếu có ít nhất 2 trên 4 bác sĩ đồng ý.Nếu chỉ có 1 người khoanh vùng đó -> Coi là nhiễu, bỏ qua.
+- => Cách này giúp loại bỏ các sai sót cá nhân của từng bác sĩ và tạo ra một mask có độ tin cậy cao nhất.
 2. Đồng nhất độ phân giả
-Vấn đề: Ảnh CT là tập hợp các lát cắt 2D xếp chồng lên nhau.
-•	Độ phân giải trên mặt lát cắt trục X, Y rất nét: thường là 0.5mm - 0.7mm.
-•	Nhưng khoảng cách giữa các lát cắt trục Z thường rất dày: 2.0mm - 3.0mm.
-•	Nếu để nguyên, khối u hình cầu sẽ bị máy tính nhìn thành hình dẹt vì trục Z bị nén.
-=> Đưa tất cả về cùng một độ phân giải chuẩn $1mm \times 1mm \times 1mm$.
-•	Kỹ thuật: Interpolation.
-Với ảnh CT: Dùng Spline Interpolation bậc 1  để giữ độ mượt.
-Với Mask: Dùng Nearest Neighbor (bậc 0) để đảm bảo mask vẫn chỉ là 0 và 1, không bị ra số thập phân mờ nhòe.
+- Vấn đề: Ảnh CT là tập hợp các lát cắt 2D xếp chồng lên nhau.
+- Độ phân giải trên mặt lát cắt trục X, Y rất nét: thường là 0.5mm - 0.7mm.
+- Nhưng khoảng cách giữa các lát cắt trục Z thường rất dày: 2.0mm - 3.0mm.
+- Nếu để nguyên, khối u hình cầu sẽ bị máy tính nhìn thành hình dẹt vì trục Z bị nén.
+- => Đưa tất cả về cùng một độ phân giải chuẩn $1mm \times 1mm \times 1mm$.
+- Kỹ thuật: Interpolation.
++ Với ảnh CT: Dùng Spline Interpolation bậc 1  để giữ độ mượt.
++ Với Mask: Dùng Nearest Neighbor (bậc 0) để đảm bảo mask vẫn chỉ là 0 và 1, không bị ra số thập phân mờ nhòe.
 3. Intensity Normalization
-Máy chụp CT đo độ đậm đặc của vật chất bằng đơn vị Hounsfield Unit (HU).
-•	Khí: -1000 HU
-•	Nước: 0 HU
-•	Xương: +1000 HU
-•	Giá trị này quá lớn để đưa vào Mạng Nơ-ron (thường thích số từ 0 đến 1).
-Bước 1 (Clipping): Chỉ quan tâm đến Lung Window. Ta cắt bỏ mọi giá trị nằm ngoài khoảng $[-1000, 400]$.
-o	Dưới -1000 (khí ngoài cơ thể): Gán thành -1000.
-o	Trên 400 (xương): Gán thành 400.
-Bước 2 (Scaling): Co giãn khoảng $[-1000, 400]$ về đoạn $[0, 1]$.
+- Máy chụp CT đo độ đậm đặc của vật chất bằng đơn vị Hounsfield Unit (HU).
++ Khí: -1000 HU
++ Nước: 0 HU
++ Xương: +1000 HU
++ Giá trị này quá lớn để đưa vào Mạng Nơ-ron (thường thích số từ 0 đến 1).
+- Bước 1 (Clipping): Chỉ quan tâm đến Lung Window. Ta cắt bỏ mọi giá trị nằm ngoài khoảng $[-1000, 400]$.
++ Dưới -1000 (khí ngoài cơ thể): Gán thành -1000.
++ Trên 400 (xương): Gán thành 400.
+- Bước 2 (Scaling): Co giãn khoảng $[-1000, 400]$ về đoạn $[0, 1]$.
 4. ROI Cropping
-Phổi rất to ($512 \times 512 \times \text{Depth}$), nhưng khối u chỉ bé tẹo (khoảng 10-30mm). Nếu đưa cả phổi vào, mô hình sẽ bị loãng thông tin.
+- Phổi rất to ($512 \times 512 \times \text{Depth}$), nhưng khối u chỉ bé tẹo (khoảng 10-30mm). Nếu đưa cả phổi vào, mô hình sẽ bị loãng thông tin.
 Giờ:
-•	Tìm tâm của khối u (từ bước Consensus).
-•	Cắt một khối hộp kích thước cố định $64 \times 64 \times 32$ bao quanh tâm đó.
-•	Padding: Nếu khối u nằm sát rìa phổi, ta bù thêm các pixel có giá trị 0 (màu đen) để đảm bảo kích thước đầu vào luôn cố định.
++ Tìm tâm của khối u (từ bước Consensus).
++ Cắt một khối hộp kích thước cố định $64 \times 64 \times 32$ bao quanh tâm đó.
++ Padding: Nếu khối u nằm sát rìa phổi, ta bù thêm các pixel có giá trị 0 (màu đen) để đảm bảo kích thước đầu vào luôn cố định.
 5. SDF Generation
 Dùng cho mô hình Implicit Neural ODE, nếu dùng mô hình khác có thể tham khảo. Mô hình này không học từ ảnh Mask, mà học từ các Điểm trong không gian.
-•	Input: Mask 3D của khối u.
-•	Bước 1: Dùng thuật toán Marching Cubes để chuyển Mask voxel thành Mesh.
-•	Bước 2: Sinh ra 10.000 điểm $(x, y, z)$.
-- 80% điểm: Nằm ngay trên bề mặt hoặc cực sát bề mặt khối u để mô hình học kỹ biên dạng.
-- 20% điểm: Nằm ngẫu nhiên trong hộp ROI để mô hình biết đâu là nền/background.
-•	Bước 3 (Tính SDF): Với mỗi điểm, tính khoảng cách ngắn nhất từ nó đến bề mặt Mesh.
-- Điểm bên trong u: Giá trị Âm (-).
-- Điểm bên ngoài u: Giá trị Dương (+).
-- Scale: Chia giá trị này cho 20.0 để mạng dễ học.
+- Input: Mask 3D của khối u.
+- Bước 1: Dùng thuật toán Marching Cubes để chuyển Mask voxel thành Mesh.
+- Bước 2: Sinh ra 10.000 điểm $(x, y, z)$.
++ 80% điểm: Nằm ngay trên bề mặt hoặc cực sát bề mặt khối u để mô hình học kỹ biên dạng.
++ 20% điểm: Nằm ngẫu nhiên trong hộp ROI để mô hình biết đâu là nền/background.
+- Bước 3 (Tính SDF): Với mỗi điểm, tính khoảng cách ngắn nhất từ nó đến bề mặt Mesh.
++ Điểm bên trong u: Giá trị Âm (-).
++ Điểm bên ngoài u: Giá trị Dương (+).
++ Scale: Chia giá trị này cho 20.0 để mạng dễ học.
 
 ```bash
     rmdir /s /q data\processed # Neu duoc tao tu truoc
