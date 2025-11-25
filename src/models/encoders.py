@@ -60,7 +60,7 @@ class NNUnetEncoder(nn.Module):  # <--- PHẢI CÓ (nn.Module)
 
         # Global Pooling + Dropout
         self.global_pool = nn.AdaptiveAvgPool3d(1)
-        self.dropout = nn.Dropout3d(0.3)
+        self.dropout = nn.Dropout(0.3)
 
         self.fc_z0 = nn.Linear(512, latent_dim)
         self.act = nn.LeakyReLU(0.2)

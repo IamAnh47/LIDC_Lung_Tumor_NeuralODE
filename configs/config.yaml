@@ -19,8 +19,8 @@ data:
 # Chọn: "resnet" (Hiện tại) hoặc "unet" (Tương lai)
 # ============================================================
 model:
-  encoder_name: "resnet"  # <--- Hiện tại dùng cái này
-  # encoder_name: "unet"  # <--- Khi nào nhiều dữ liệu thì mở cái này
+  # encoder_name: "resnet"  # <--- Hiện tại dùng cái này
+  encoder_name: "unet"  # <--- Khi nào nhiều dữ liệu thì mở cái này
 
   latent_dim: 256
   hidden_dim: 512
@@ -34,16 +34,16 @@ model:
 # ============================================================
 train:
   # --- Cấu hình cho ResNet (Nhẹ, nhanh) ---
-  batch_size: 8
-  learning_rate: 2.0e-5
-  num_epochs: 300
-  weight_decay: 1.0e-5
+#  batch_size: 8
+#  learning_rate: 5.0e-5
+#  num_epochs: 300
+#  weight_decay: 1.0e-5
   # --- Cấu hình cho U-Net (Khi nào dùng thì đổi sang số này) ---
-  # batch_size: 4          # U-Net nặng hơn, cần giảm batch size
-  # learning_rate: 2.0e-5  # U-Net học từ đầu, cần chậm hơn
-  # num_epochs: 400        # Cần thời gian lâu hơn để hội tụ
-  # weight_decay: 1.0e-5   # <--- THÊM DÒNG NÀY
+   batch_size: 4          # U-Net nặng hơn, cần giảm batch size
+   learning_rate: 2.0e-5  # U-Net học từ đầu, cần chậm hơn
+   num_epochs: 400        # Cần thời gian lâu hơn để hội tụ
+   weight_decay: 1.0e-5
 
   # Khi chuyển sang U-Net thì chỉnh thành:
   # weight_decay: 1.0e-4 (Tăng lên để chống overfit)
-  save_every: 10
+   save_every: 10

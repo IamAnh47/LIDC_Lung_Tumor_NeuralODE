@@ -36,7 +36,6 @@ LIDC_Lung_Tumor_NeuralODE/
 │   └── 📂 processed/             # Dữ liệu sau khi tiền xử lý (Sẵn sàng cho Training)
 │       ├── 📂 rois/              # Các khối 3D ROI (64x64x32) đã cắt và chuẩn hóa (.npy)
 │       ├── 📂 sdfs/              # Dữ liệu điểm mẫu (x,y,z) và giá trị SDF tương ứng (.npz)
-│       ├── 📂 meshes_gt/         # Mesh Ground Truth (.obj) dùng để đánh giá
 │       └── split_data.json       # File phân chia tập dữ liệu: Train / Validation / Test
 │
 ├── 📁 src/                       # MÃ NGUỒN CHÍNH (Source Code)
@@ -51,9 +50,9 @@ LIDC_Lung_Tumor_NeuralODE/
 │   │
 │   ├── 📂 models/                # Module: Kiến trúc mạng (Neural ODE Architecture)
 │   │   ├── __init__.py
-│   │   ├── encoders.py           # 3D Encoder (Sử dụng MONAI nnU-Net backbone)
+│   │   ├── encoders.py           # 3D Encoder
 │   │   ├── ode_func.py           # Hàm vi phân f(z,t) cho Neural ODE Solver
-│   │   ├── decoders.py           # Implicit Decoder (MLP dự đoán giá trị SDF)
+│   │   ├── decoders.py           # Implicit Decoder
 │   │   └── full_model.py         # Class ghép nối toàn bộ: Encoder -> ODE -> Decoder
 │   │
 │   ├── 📂 training/              # Module: Huấn luyện
@@ -72,9 +71,13 @@ LIDC_Lung_Tumor_NeuralODE/
 │       ├── 📂 checkpoints/       # Lưu trọng số mô hình tốt nhất (.pth)
 │       ├── 📂 logs/              # File log để theo dõi trên TensorBoard
 │       └── 📂 visuals/           # Ảnh kết quả dự đoán được lưu tự động khi train
+│   └── 📂 exp_02_resnet/         # Thí nghiệm chính sử dụng nnU-Net
+│       ├── 📂 checkpoints/       # Lưu trọng số mô hình tốt nhất (.pth)
+│       ├── 📂 logs/              # File log để theo dõi trên TensorBoard
+│       └── 📂 visuals/           # Ảnh kết quả dự đoán được lưu tự động khi train
 │
 ├── 📁 outputs/                   # KẾT QUẢ ĐẦU RA (Final Results)
-│   ├── 📂 predictions/           # Các file .obj tái tạo từ tập Test (Dùng để xem trên Blender)
+│   ├── 📂 predictions/           # Các file .obj tái tạo từ tập Test bao gồm GT và FRED (Dùng để xem trên Blender)
 │   └── 📄 evaluation_report.csv  # Bảng báo cáo định lượng các chỉ số (Metric Report)
 │
 ├── 📁 notebooks/                 # JUPYTER NOTEBOOKS (Nháp & Kiểm thử)
@@ -149,7 +152,7 @@ Dự án sử dụng cơ chế "God Mode Loader" để tự động tìm đườ
 - Kỹ thuật: Majority Voting - bỏ phiếu đa số - 50%.
 - Cách thực hiện:Chồng 4 mask của 4 bác sĩ lên nhau. Một voxel chỉ được coi là "Khối u" nếu có ít nhất 2 trên 4 bác sĩ đồng ý.Nếu chỉ có 1 người khoanh vùng đó -> Coi là nhiễu, bỏ qua.
 - => Cách này giúp loại bỏ các sai sót cá nhân của từng bác sĩ và tạo ra một mask có độ tin cậy cao nhất.
-2. Đồng nhất độ phân giả
+2. Đồng nhất độ phân giải
 - Vấn đề: Ảnh CT là tập hợp các lát cắt 2D xếp chồng lên nhau.
 - Độ phân giải trên mặt lát cắt trục X, Y rất nét: thường là 0.5mm - 0.7mm.
 - Nhưng khoảng cách giữa các lát cắt trục Z thường rất dày: 2.0mm - 3.0mm.
@@ -172,7 +175,7 @@ Dự án sử dụng cơ chế "God Mode Loader" để tự động tìm đườ
 - Phổi rất to ($512 \times 512 \times \text{Depth}$), nhưng khối u chỉ bé tẹo (khoảng 10-30mm). Nếu đưa cả phổi vào, mô hình sẽ bị loãng thông tin.
 Giờ:
 + Tìm tâm của khối u (từ bước Consensus).
-+ Cắt một khối hộp kích thước cố định $64 \times 64 \times 32$ bao quanh tâm đó.
++ Cắt một khối hộp kích thước cố định $64 \times 64 \times 64$ bao quanh tâm đó.
 + Padding: Nếu khối u nằm sát rìa phổi, ta bù thêm các pixel có giá trị 0 (màu đen) để đảm bảo kích thước đầu vào luôn cố định.
 5. SDF Generation
 Dùng cho mô hình Implicit Neural ODE, nếu dùng mô hình khác có thể tham khảo. Mô hình này không học từ ảnh Mask, mà học từ các Điểm trong không gian.
@@ -187,7 +190,7 @@ Dùng cho mô hình Implicit Neural ODE, nếu dùng mô hình khác có thể t
 + Scale: Chia giá trị này cho 20.0 để mạng dễ học.
 
 ```bash
-    rmdir /s /q data\processed # Neu duoc tao tu truoc
+    rmdir /s /q data\processed
     python prepare_data.py
 ```
 Kết quả: Các file .npy và .npz được tạo trong data/processed/.
@@ -229,10 +232,11 @@ Giải thích:
 Huấn luyện mạng Neural ODE. Script hỗ trợ Mixed-precision training (AMP) để tăng tốc độ và TensorBoard để theo dõi Loss.
 
 ```bash
+  rmdir /s /q experiments\exp_01_unet
   rmdir /s /q experiments\exp_02_resnet
   python train_model.py --config configs/config.yaml
-  python train_model.py --config configs/config.yaml --resume experiments/exp_01_unet/checkpoints/last.pth
-  python train_model.py --config configs/config.yaml --resume experiments/exp_02_resnet/checkpoints/last.pth
+  python train_model.py --config configs/config.yaml --resume experiments/exp_01_unet/checkpoints/best_model.pth
+  python train_model.py --config configs/config.yaml --resume experiments/exp_02_resnet/checkpoints/best_model.pth
 ```
 Kết quả: File trọng số model tốt nhất được lưu tại experiments/exp_01_unet/checkpoints/.
 
@@ -241,6 +245,7 @@ Tái tạo Mesh 3D từ tập dữ liệu kiểm tra (Test set) và tính toán 
 
 ```bash
 # Chạy với checkpoint tốt nhất
+rmdir /s /q outputs\predictions
 python inference_eval.py --checkpoint experiments/exp_01_unet/checkpoints/best_model.pth
 python inference_eval.py --checkpoint experiments/exp_02_resnet/checkpoints/best_model.pth
 ```
@@ -258,4 +263,12 @@ Mở phần mềm Blender.
 
 Import file Wavefront (.obj).
 
+# Khi train mô hình xong thì 
+
+1. Input: File DICOM bệnh nhân mới + Tọa độ tâm khối u.
+- Tiền xử lý: Resample -> Normalize -> Crop ra khối $64^3$.
+- Mô hình chạy (Neural ODE): Dự đoán trường SDF từ khối ảnh đó 
+2. Hậu xử lý: 
+- Dùng Marching Cubes chuyển SDF thành file .obj3.
+- Output: Mô hình 3D hoàn chỉnh.
 Tác giả: Tuấn Anh, HCMUT
