@@ -14,8 +14,10 @@ def check_model_prediction():
         print("❌ Không thấy file config!")
         return
 
-    with open(config_path, "r") as f:
+    # --- FIX LỖI UNICODE: Thêm encoding="utf-8" ---
+    with open(config_path, "r", encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
+    # ----------------------------------------------
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"🔌 Device: {device}")
@@ -23,29 +25,33 @@ def check_model_prediction():
     # 2. Load Model & Checkpoint
     model = NeuralODE3DReconstruction(cfg).to(device)
 
-    # checkpoint_path = "experiments/exp_01_nnunet/checkpoints/best_model.pth"
-    # if not os.path.exists(checkpoint_path):
-    #     print("⚠️ Chưa có best_model.pth, thử load last.pth...")
-    #     checkpoint_path = "experiments/exp_01_nnunet/checkpoints/last.pth"
+    # Tự động chọn đường dẫn checkpoint dựa trên config (ResNet hay UNet)
+    enc_name = cfg['model']['encoder_name']
+    if enc_name == "resnet":
+        exp_name = "exp_02_resnet"
+    else:
+        exp_name = "exp_01_unet"  # Hoặc tên khác nếu đổi config
 
-    checkpoint_path = "experiments/exp_02_resnet/checkpoints/best_model.pth"
+    base_ckpt = os.path.join("experiments", exp_name, "checkpoints")
+    checkpoint_path = os.path.join(base_ckpt, "best_model.pth")
+
     if not os.path.exists(checkpoint_path):
-        print("⚠️ Chưa có best_model.pth, thử load last.pth...")
-        checkpoint_path = "experiments/exp_02_resnet/checkpoints/last.pth"
+        print(f"⚠️ Chưa có best_model.pth tại {checkpoint_path}, thử load last.pth...")
+        checkpoint_path = os.path.join(base_ckpt, "last.pth")
 
     if os.path.exists(checkpoint_path):
         ckpt = torch.load(checkpoint_path, map_location=device)
         model.load_state_dict(ckpt['state_dict'])
         print(f"✅ Đã load model từ: {checkpoint_path}")
     else:
-        print("❌ Không tìm thấy checkpoint nào để test!")
+        print(f"❌ Không tìm thấy checkpoint nào tại {base_ckpt}!")
         return
 
     model.eval()
 
-    # 3. Lấy 1 mẫu từ tập Train (hoặc Val) để xem nó học được chưa
+    # 3. Lấy 1 mẫu từ tập Test
     processed_dir = cfg['paths']['processed_data']
-    dataset = LIDCDataset(processed_dir, split='test')  # Test trên train cho dễ
+    dataset = LIDCDataset(processed_dir, split='test')  # Kiểm tra trên tập Test
 
     if len(dataset) == 0:
         print("❌ Dataset rỗng!")
@@ -53,13 +59,13 @@ def check_model_prediction():
 
     # Lấy mẫu đầu tiên
     roi, points, gt_sdf = dataset[0]
-    roi = roi.unsqueeze(0).to(device)  # (1, 1, D, H, W)
+    roi = roi.unsqueeze(0).to(device)
 
     print(f"🔍 Đang kiểm tra file ID: {dataset.file_ids[0]}")
 
-    # 4. Tạo lưới điểm dày đặc để dự đoán (giống lúc inference)
+    # 4. Tạo lưới điểm
     roi_size = cfg['data']['roi_size']
-    z = torch.linspace(0, 1, 32)  # Giảm độ phân giải chút để chạy nhanh
+    z = torch.linspace(0, 1, 32)
     y = torch.linspace(0, 1, 64)
     x = torch.linspace(0, 1, 64)
     grid_z, grid_y, grid_x = torch.meshgrid(z, y, x, indexing='ij')
@@ -86,24 +92,21 @@ def check_model_prediction():
     else:
         print("✅ KẾT LUẬN: Mô hình đã có vùng âm! Có thể tạo được Mesh.")
 
-    # Vẽ biểu đồ và lưu vào thư mục debugs
+    # Vẽ biểu đồ
     try:
-        # --- TẠO THƯ MỤC DEBUGS ---
         debug_dir = "debugs"
         os.makedirs(debug_dir, exist_ok=True)
         save_path = os.path.join(debug_dir, "debug_sdf_dist.png")
-        # --------------------------
 
-        plt.figure(figsize=(8, 5))  # Tạo figure mới để tránh vẽ chồng
+        plt.figure(figsize=(8, 5))
         plt.hist(pred_sdf.cpu().numpy().flatten(), bins=50, color='blue', alpha=0.7)
         plt.axvline(x=0, color='red', linestyle='--', label="Bề mặt (0.0)")
         plt.title(f"Phân bố SDF - {dataset.file_ids[0]}")
         plt.legend()
         plt.grid(True, alpha=0.3)
-
-        plt.savefig(save_path)  # Lưu vào đường dẫn mới
+        plt.savefig(save_path)
         print(f"🖼️ Đã lưu biểu đồ tại: {save_path}")
-        plt.close()  # Đóng figure để giải phóng bộ nhớ
+        plt.close()
     except Exception as e:
         print(f"⚠️ Không thể vẽ biểu đồ: {e}")
 

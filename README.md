@@ -68,7 +68,7 @@ LIDC_Lung_Tumor_NeuralODE/
 │       └── visualizer.py         # Vẽ biểu đồ Loss, hiển thị lát cắt CT
 │
 ├── 📁 experiments/               # LOGS & CHECKPOINTS (Lưu kết quả chạy)
-│   └── 📂 exp_01_nnunet/         # Thí nghiệm chính sử dụng nnU-Net
+│   └── 📂 exp_01_unet/         # Thí nghiệm chính sử dụng nnU-Net
 │       ├── 📂 checkpoints/       # Lưu trọng số mô hình tốt nhất (.pth)
 │       ├── 📂 logs/              # File log để theo dõi trên TensorBoard
 │       └── 📂 visuals/           # Ảnh kết quả dự đoán được lưu tự động khi train
@@ -187,33 +187,67 @@ Dùng cho mô hình Implicit Neural ODE, nếu dùng mô hình khác có thể t
 - Scale: Chia giá trị này cho 20.0 để mạng dễ học.
 
 ```bash
+    rmdir /s /q data\processed # Neu duoc tao tu truoc
     python prepare_data.py
 ```
 Kết quả: Các file .npy và .npz được tạo trong data/processed/.
 
 ## Bước 2: Huấn luyện Mô hình (Training)
+- Hàm loss:
+Tổng hàm Loss $\mathcal{L}$ là sự kết hợp giữa SDF Reconstruction Loss để tạo hình dáng và Eikonal Loss để làm mịn bề mặt:
+
+![img.png](img_loss_func/Loss_final.png)
+
+Trong đó hệ số $\lambda = 0.005$
+
+1. Weighted SDF L1 Loss
+Đây là thành phần chính giúp mô hình học được hình dạng khối u. Sử dụng L1 Loss có trọng số và kẹp giá trị.
+
+![img.png](img_loss_func/L1.png)
+
+Giải thích:
+- $N$: Số lượng điểm mẫu (batch size $\times$ số điểm).
+- $x_i$: Tọa độ điểm 3D $(z, y, x)$.
+- $s_{\text{pred}}(x_i)$: Giá trị SDF do mô hình dự đoán.
+- $s_{\text{gt}}(x_i)$: Giá trị SDF thực tế (Ground Truth).
+- Hàm $\text{clamp}(v, -\epsilon, \epsilon)$: Kẹp giá trị Ground Truth trong khoảng nhỏ ($[-0.5, 0.5]$) để mô hình tập trung học kỹ vùng bề mặt, bỏ qua sai số ở vùng xa.
+- $w_i$ (Trọng số): Phạt nặng nếu đoán sai vùng bên trong khối u.
+
+$$w_i = \begin{cases} 15.0 & \text{nếu } s_{\text{gt}}(x_i) < 0 \text{ (Bên trong u)} \\ 1.0 & \text{nếu } s_{\text{gt}}(x_i) \ge 0 \text{ (Bên ngoài u)} \end{cases}$$
+
+2. Eikonal Regularization
+Đây là thành phần phụ trợ giúp bề mặt trơn mượt và đúng tính chất vật lý. Theo định nghĩa toán học, độ lớn gradient của một hàm khoảng cách (SDF) tại bất kỳ đâu phải luôn bằng 1.
+
+![img.png](img_loss_func/Eikonal.png)
+
+Giải thích:
+- $\nabla_{x} s_{\text{pred}}$: Đạo hàm (Gradient) của giá trị dự đoán theo tọa độ không gian $(x, y, z)$.
+- Nó ép mô hình: Đừng thay đổi giá trị quá gắt, cũng đừng thay đổi quá chậm, hãy thay đổi đều đặn với tốc độ bằng 1.
+
+
 Huấn luyện mạng Neural ODE. Script hỗ trợ Mixed-precision training (AMP) để tăng tốc độ và TensorBoard để theo dõi Loss.
 
 ```bash
+  rmdir /s /q experiments\exp_02_resnet
   python train_model.py --config configs/config.yaml
-  python train_model.py --config configs/config.yaml --resume experiments/exp_01_nnunet/checkpoints/last.pth
+  python train_model.py --config configs/config.yaml --resume experiments/exp_01_unet/checkpoints/last.pth
   python train_model.py --config configs/config.yaml --resume experiments/exp_02_resnet/checkpoints/last.pth
 ```
-Kết quả: File trọng số model tốt nhất được lưu tại experiments/exp_01_nnunet/checkpoints/.
+Kết quả: File trọng số model tốt nhất được lưu tại experiments/exp_01_unet/checkpoints/.
 
 ## Bước 3: Suy luận & Đánh giá (Inference & Evaluation)
 Tái tạo Mesh 3D từ tập dữ liệu kiểm tra (Test set) và tính toán các chỉ số sai số hình học (Chamfer Distance, Hausdorff Distance).
 
 ```bash
 # Chạy với checkpoint tốt nhất
-python inference_eval.py --checkpoint experiments/exp_01_nnunet/checkpoints/best_model.pth
+python inference_eval.py --checkpoint experiments/exp_01_unet/checkpoints/best_model.pth
 python inference_eval.py --checkpoint experiments/exp_02_resnet/checkpoints/best_model.pth
 ```
 # 📊 Kết quả & Trực quan hóa
 Theo dõi quá trình Train
 Mở TensorBoard để xem biểu đồ Loss và Eikonal regularization theo thời gian thực:
 ```bash
-tensorboard --logdir experiments/exp_01_nnunet/logs
+tensorboard --logdir experiments/exp_01_unet/logs
 tensorboard --logdir experiments/exp_02_resnet/logs
 ```
 # Xem mô hình 3D

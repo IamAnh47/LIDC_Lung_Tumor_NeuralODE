@@ -1,6 +1,6 @@
 project:
   name: "LIDC_NeuralODE_Reconstruction"
-  version: "1.0.0"
+  version: "2.1.0_Hybrid_Ready"
 
 paths:
   raw_data: "data/raw/LIDC-IDRI"
@@ -10,19 +10,40 @@ paths:
 
 data:
   target_spacing: [1.0, 1.0, 1.0]
-  roi_size: [64, 64, 32]
+  roi_size: [64, 64, 64]
   sdf_samples: 10000
   split_ratios: [0.7, 0.1, 0.2]
 
+# ============================================================
+# 👇 CÔNG TẮC CHUYỂN ĐỔI MODEL (SỬA Ở ĐÂY) 👇
+# Chọn: "resnet" (Hiện tại) hoặc "unet" (Tương lai)
+# ============================================================
 model:
-  encoder_name: "nnunet"
+  encoder_name: "resnet"  # <--- Hiện tại dùng cái này
+  # encoder_name: "unet"  # <--- Khi nào nhiều dữ liệu thì mở cái này
+
   latent_dim: 256
   hidden_dim: 512
   ode:
     method: "dopri5"
+    rtol: 1.0e-4
+    atol: 1.0e-4
 
+# ============================================================
+# 👇 CẤU HÌNH TRAINING (TÙY CHỈNH THEO MODEL) 👇
+# ============================================================
 train:
+  # --- Cấu hình cho ResNet (Nhẹ, nhanh) ---
   batch_size: 8
   learning_rate: 2.0e-5
-  num_epochs: 100
-  save_every: 5
+  num_epochs: 300
+  weight_decay: 1.0e-5
+  # --- Cấu hình cho U-Net (Khi nào dùng thì đổi sang số này) ---
+  # batch_size: 4          # U-Net nặng hơn, cần giảm batch size
+  # learning_rate: 2.0e-5  # U-Net học từ đầu, cần chậm hơn
+  # num_epochs: 400        # Cần thời gian lâu hơn để hội tụ
+  # weight_decay: 1.0e-5   # <--- THÊM DÒNG NÀY
+
+  # Khi chuyển sang U-Net thì chỉnh thành:
+  # weight_decay: 1.0e-4 (Tăng lên để chống overfit)
+  save_every: 10

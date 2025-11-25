@@ -20,21 +20,14 @@ def generate_sdf_points(mesh, num_samples=10000, roi_size=(64, 64, 32)):
     """
     if mesh is None: return None, None
 
-    # --- CHIẾN LƯỢC LẤY MẪU MỚI (80% Surface / 20% Uniform) ---
+    # Quay về tỷ lệ vàng: 50% Surface - 50% Uniform
+    # Hoặc 60% Surface - 40% Uniform
 
-    # 1. Surface Points (80%): Tập trung tối đa vào lớp vỏ khối u
-    # Đây là nơi SDF = 0, là thông tin quan trọng nhất
-    n_surf = int(num_samples * 0.8)
+    n_surf = int(num_samples * 0.5)  # Giảm từ 0.8 xuống 0.5
     points_surf, _ = trimesh.sample.sample_surface(mesh, n_surf)
+    points_surf += np.random.normal(0, 1.0, points_surf.shape)  # Giữ nhiễu 1.0mm để tạo dốc
 
-    # Thêm nhiễu cực nhỏ (sigma=0.1mm)
-    # Chỉ để điểm lệch ra khỏi mesh một chút xíu, giúp tính gradient đúng
-    # Không dùng sigma lớn (như 3.0mm) nữa vì nó làm mờ ranh giới
-    points_surf += np.random.normal(0, 0.1, points_surf.shape)
-
-    # 2. Uniform Points (20%): Điểm ngẫu nhiên toàn không gian
-    # Để mô hình biết đâu là "xa tít mù khơi" (nền)
-    n_uniform = num_samples - n_surf
+    n_uniform = num_samples - n_surf  # Tăng lên 50% để model học được nền tốt hơn
 
     # Random trong kích thước ROI (Z, Y, X)
     z_rand = np.random.uniform(0, roi_size[0], n_uniform)

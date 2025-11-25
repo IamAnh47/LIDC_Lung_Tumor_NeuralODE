@@ -25,7 +25,8 @@ def main():
     if not os.path.exists(args.config):
         raise FileNotFoundError(f"❌ Không tìm thấy file config tại: {args.config}")
 
-    with open(args.config, "r") as f:
+    # --- FIX LỖI UNICODE TRÊN WINDOWS ---
+    with open(args.config, "r", encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
 
     print(f"🚀 BẮT ĐẦU TRAINING: {cfg['project']['name']}")
@@ -40,12 +41,11 @@ def main():
 
     train_dataset = LIDCDataset(processed_dir, split='train')
 
-    # # --- 👇 THÊM ĐOẠN NÀY ĐỂ DEBUG 👇 ---
-    # # Chỉ lấy đúng 1 mẫu đầu tiên để ép model học thuộc lòng
+    # --- DEBUG MODE (Đã comment lại) ---
     # from torch.utils.data import Subset
     # train_dataset = Subset(train_dataset, [10])
     # print("⚠️ ĐANG CHẠY CHẾ ĐỘ DEBUG: CHỈ TRAIN 1 MẪU!")
-    # # ------------------------------------
+    # ------------------------------------
 
     train_loader = DataLoader(
         train_dataset,
@@ -68,7 +68,6 @@ def main():
     print(f"📦 Dữ liệu Val:   {len(val_dataset)} mẫu")
 
     # --- 4. Khởi tạo Mô hình (Model) ---
-    #print("🧠 Đang khởi tạo mô hình Neural ODE + nnU-Net Encoder...")
     print("🧠 Đang khởi tạo mô hình Neural ODE + ResNet-3D-MedicalNet Encoder...")
     model = NeuralODE3DReconstruction(cfg)
 
@@ -132,10 +131,14 @@ def main():
             print(f"   💾 Đã lưu checkpoint định kỳ tại Epoch {epoch}")
 
     print("\n✅ HUẤN LUYỆN HOÀN TẤT!")
-    # print(
-    #     f"👉 Model tốt nhất: {os.path.join(cfg['paths']['experiment_dir'], 'exp_01_nnunet', 'checkpoints', 'best_model.pth')}")
-    print(
-        f"👉 Model tốt nhất: {os.path.join(cfg['paths']['experiment_dir'], 'exp_02_resnet', 'checkpoints', 'best_model.pth')}")
+
+    # Tự động xác định đường dẫn lưu dựa trên config (Hỗ trợ cả nnunet và resnet)
+    current_exp = os.path.basename(cfg['paths']['experiment_dir'])
+    # Mặc định trả về đường dẫn giả định nếu biến experiment_dir chỉ là thư mục cha
+    # Thực tế trong trainer.py nó lưu vào ckpt_dir cụ thể
+    ckpt_path = os.path.join(trainer.ckpt_dir, 'best_model.pth')
+    print(f"👉 Model tốt nhất: {ckpt_path}")
+
 
 if __name__ == "__main__":
     main()

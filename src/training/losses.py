@@ -24,7 +24,7 @@ def sdf_loss(pred, gt):
     # 2. TRỌNG SỐ (Weighting)
     # Giữ nguyên phạt nặng vùng bên trong
     weights = torch.ones_like(gt)
-    weights[gt < 0] = 5.0
+    weights[gt < 0] = 15.0
 
     return (error * weights).mean()
 
