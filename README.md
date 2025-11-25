@@ -213,7 +213,7 @@ Giải thích:
 - Hàm $\text{clamp}(v, -\epsilon, \epsilon)$: Kẹp giá trị Ground Truth trong khoảng nhỏ ($[-0.5, 0.5]$) để mô hình tập trung học kỹ vùng bề mặt, bỏ qua sai số ở vùng xa.
 - $w_i$ (Trọng số): Phạt nặng nếu đoán sai vùng bên trong khối u.
 
-$$w_i = \begin{cases} 15.0 & \text{nếu } s_{\text{gt}}(x_i) < 0 \text{ (Bên trong u)}
+$$w_i = \begin{cases} 15.0 & \text{nếu } s_{\text{gt}}(x_i) < 0 \text{ (Bên trong u)};
 \\ 1.0 & \text{nếu } s_{\text{gt}}(x_i) \ge 0 \text{ (Bên ngoài u)} \end{cases}$$
 
 2. Eikonal Regularization
